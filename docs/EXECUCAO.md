@@ -1,4 +1,4 @@
-# Executar a parte I01–I02
+# Executar a parte I01–I03
 
 Requer SDK .NET 10. O template usa `net10.0` e pacotes 10.0.12.
 
@@ -45,8 +45,33 @@ necessária. Esta etapa não oferece endpoint de refresh; faça um novo login ao
 As chaves Data Protection devem permanecer locais e fora do Git; não apague-as
 se precisar preservar a validade de tokens já emitidos.
 
-I02 expõe apenas login e health; as rotas protegidas chegam em I03. Endpoints de
-despesas ainda serão criados pelos outros integrantes.
+Rotas desta entrega:
+
+| Rota | Acesso | Comportamento |
+|---|---|---|
+| GET /health | Público | Confirma inicialização |
+| POST /register | Público | Cria conta sem roles, retorna 201 |
+| POST /login | Público | Retorna token; credencial incorreta retorna 401 |
+| GET /api/admin/users | Admin | Lista somente id, email e roles |
+| PUT /api/admin/users/{id}/roles | Admin | Substitui o conjunto completo de roles |
+
+Cadastro recebe somente email e password. Campos desconhecidos, incluindo roles,
+são rejeitados com 400. Senha: 10–128 caracteres, com requisitos padrão do Identity
+para maiúscula, minúscula, número e símbolo. Cadastro não atribui Employee: o Admin
+precisa fazê-lo. PUT recebe {"roles":["Employee"]}; {"roles":[]} remove todas as
+roles de outro usuário. Nomes são exatos e duplicatas são rejeitadas. Admin não
+remove sua própria role Admin. As alterações são transacionais.
+
+Depois de alterar roles, faça novo login. O security stamp é atualizado, mas os
+tokens bearer de acesso já emitidos continuam com suas claims até expirarem;
+a atualização não é um mecanismo de revogação imediata. Não há endpoint refresh
+nesta etapa. Ausência de token retorna 401; usuário autenticado sem Admin retorna
+403; usuário inexistente retorna 404; entrada inválida retorna 400.
+
+Oito testes unitários iniciais validam as regras de roles sem banco/rede. A suíte
+completa de despesas, ownership, decisões, pagamento e histórico é responsabilidade
+compartilhada, concentrada em I09. Endpoints de despesas ainda serão criados pelos
+outros integrantes.
 Se executou I01 antes de instalar I02, recrie somente o banco de teste descartável,
 pois o esquema agora inclui as tabelas de Identity. O seed é executado em uma
 transação para evitar conta Admin criada parcialmente.
