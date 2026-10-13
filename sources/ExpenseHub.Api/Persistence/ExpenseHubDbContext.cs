@@ -1,10 +1,12 @@
 using ExpenseHub.Api.Domain;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExpenseHub.Api.Persistence;
 
 /// <summary>Relational persistence for reimbursements.</summary>
-public sealed class ExpenseHubDbContext : DbContext
+public sealed class ExpenseHubDbContext : IdentityDbContext<IdentityUser>
 {
     /// <summary>Initializes the context with provider options.</summary>
     /// <param name="options">Configured database options.</param>
@@ -26,10 +28,10 @@ public sealed class ExpenseHubDbContext : DbContext
     public DbSet<PaymentRecord> PaymentRecords => Set<PaymentRecord>();
 
     /// <inheritdoc/>
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder builder)
     {
-        base.OnModelCreating(modelBuilder);
-        modelBuilder.Entity<Expense>(entity =>
+        base.OnModelCreating(builder);
+        builder.Entity<Expense>(entity =>
         {
             entity.HasKey(expense => expense.Id);
             entity.Property(expense => expense.OwnerId).HasMaxLength(450).IsRequired();
@@ -39,18 +41,20 @@ public sealed class ExpenseHubDbContext : DbContext
             entity.Property(expense => expense.Version).IsConcurrencyToken();
             entity.HasIndex(expense => new { expense.OwnerId, expense.Status });
             entity.HasIndex(expense => expense.Status);
+            entity.HasOne<IdentityUser>().WithMany().HasForeignKey(expense => expense.OwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<ExpenseCategory>().WithMany().HasForeignKey(expense => expense.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<ExpenseCategory>(entity =>
+        builder.Entity<ExpenseCategory>(entity =>
         {
             entity.HasKey(category => category.Id);
             entity.Property(category => category.Name).HasMaxLength(100).IsRequired();
             entity.HasIndex(category => category.Name).IsUnique();
         });
 
-        modelBuilder.Entity<ExpenseHistory>(entity =>
+        builder.Entity<ExpenseHistory>(entity =>
         {
             entity.HasKey(history => history.Id);
             entity.Property(history => history.Action).HasMaxLength(50).IsRequired();
@@ -60,15 +64,19 @@ public sealed class ExpenseHubDbContext : DbContext
             entity.Property(history => history.Justification).HasMaxLength(500);
             entity.Property(history => history.Changes).HasMaxLength(2000);
             entity.HasIndex(history => history.ExpenseId);
+            entity.HasOne<IdentityUser>().WithMany().HasForeignKey(history => history.ActorId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<Expense>().WithMany().HasForeignKey(history => history.ExpenseId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<PaymentRecord>(entity =>
+        builder.Entity<PaymentRecord>(entity =>
         {
             entity.HasKey(payment => payment.Id);
             entity.Property(payment => payment.ActorId).HasMaxLength(450).IsRequired();
             entity.HasIndex(payment => payment.ExpenseId).IsUnique();
+            entity.HasOne<IdentityUser>().WithMany().HasForeignKey(payment => payment.ActorId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<Expense>().WithOne().HasForeignKey<PaymentRecord>(payment => payment.ExpenseId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
