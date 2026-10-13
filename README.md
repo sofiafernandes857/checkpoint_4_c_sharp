@@ -91,3 +91,7 @@ Entregue:
 - documentação atualizada.
 
 O projeto deve compilar sem erros e ser entregue sem warnings para receber a pontuação integral de Qualidade de Código.
+
+## Implementação do grupo
+
+Consulte [Execução local](docs/EXECUCAO.md) para provider, configuração e comandos.
