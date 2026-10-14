@@ -22,6 +22,29 @@ public sealed class AuthenticationController : ControllerBase
         _signIn = signIn;
     }
 
+    /// <summary>Registers an account without assigning any roles.</summary>
+    /// <param name="request">Validated registration fields.</param>
+    /// <returns>The new identifier or validation errors.</returns>
+    [AllowAnonymous]
+    [HttpPost("/register")]
+    public async Task<IActionResult> RegisterAsync(RegisterRequest request)
+    {
+        IdentityUser user = new() { UserName = request.Email, Email = request.Email };
+        IdentityResult result = await _users.CreateAsync(user, request.Password);
+
+        if (!result.Succeeded)
+        {
+            foreach (IdentityError error in result.Errors)
+            {
+                ModelState.AddModelError(error.Code, error.Description);
+            }
+
+            return ValidationProblem(ModelState);
+        }
+
+        return StatusCode(201, new { user.Id, user.Email });
+    }
+
     /// <summary>Issues a bearer credential for a valid, unlocked account.</summary>
     /// <param name="request">Validated credentials.</param>
     /// <returns>The Identity token response or a credential error.</returns>
