@@ -1,0 +1,78 @@
+# Despesas — I04
+
+## Contratos
+
+As rotas `POST /api/expenses` e `PUT /api/expenses/{id}` exigem a role
+`Employee`. O cadastro público não atribui essa role: o Admin precisa concedê-la,
+e o usuário deve fazer novo login.
+
+O corpo recebe somente `description`, `amount`, `expenseDate` e `categoryId`:
+
+```json
+{
+  "description": "Almoço de trabalho",
+  "amount": 25.50,
+  "expenseDate": "2026-10-14",
+  "categoryId": "10000000-0000-0000-0000-000000000001"
+}
+```
+
+Campos desconhecidos são rejeitados, inclusive proprietário, identificador,
+estado, versão e horários. O proprietário é obtido da claim `NameIdentifier`.
+Criação retorna 201 com a despesa e o cabeçalho Location; edição retorna 200.
+
+A descrição tem seus espaços nas extremidades removidos antes da validação de
+10–500 caracteres. A validação declarativa também limita o texto bruto a 500
+caracteres. Valor: decimal entre 0,01 e 2.147.483.647, inclusive. A data não pode
+ser ausente, o valor mínimo de DateOnly ou futura: hoje é calculado em UTC usando
+TimeProvider, registrado por injeção de dependência. A categoria precisa existir.
+
+Edição exige proprietário e estado Draft. Despesa inexistente ou de outro usuário
+retorna 404; estado diferente de Draft retorna 409. Ausência de autenticação retorna
+401, falta de Employee retorna 403 e entrada inválida retorna 400, com ProblemDetails.
+
+## Categorias
+
+`GET /api/expense-categories`, protegido por Employee, retorna as categorias
+disponíveis. A inicialização adiciona categorias ausentes dentro da transação de
+seed, sem criar usuários adicionais ou substituir categorias existentes:
+
+| ID | Nome |
+|---|---|
+| `10000000-0000-0000-0000-000000000001` | Alimentação |
+| `10000000-0000-0000-0000-000000000002` | Transporte |
+| `10000000-0000-0000-0000-000000000003` | Hospedagem |
+
+Se o banco já tiver uma categoria com o mesmo nome e outro ID, o seed preserva
+essa categoria. Consulte a rota para obter os IDs efetivamente disponíveis.
+
+## Histórico e integração
+
+ExpenseService coordena persistência e autorização. ExpenseDraftRules concentra
+validação e mutações testáveis sem banco/rede. Despesa e ExpenseHistory são
+gravados no mesmo SaveChangesAsync, transacional no provider relacional.
+
+Criação registra `Created`, estado anterior nulo e posterior Draft. Edição registra
+`Edited`, estados Draft e um JSON em Changes com valores `previous`/`current` de
+cada campo alterado. Uma edição com campos idênticos registra Changes vazio `{}`.
+IDs, atores e instantes são definidos no servidor; os instantes são UTC.
+
+Cada edição renova Version. DbUpdateConcurrencyException retorna 409 e limpa o
+rastreamento das alterações que não foram persistidas. O token é usado para
+concorrência entre operações no servidor; esta versão não implementa If-Match
+para detectar formulários antigos enviados posteriormente por clientes.
+
+O endpoint de detalhe indicado em Location será implementado na I05. As operações
+de envio, aprovação, pagamento e consulta de histórico devem integrar o serviço
+existente nas próximas issues. Nenhuma alteração de esquema foi necessária na I04.
+
+## Validação
+
+```powershell
+dotnet build ./sources/ExpenseHub.slnx
+dotnet test ./sources/ExpenseHub.slnx
+```
+
+ExpenseDraftRulesTests cobre campos gerados no servidor, limites, datas, ownership,
+estados não editáveis, versão, alterações auditáveis e rejeição de campos protegidos.
+Os testes não dependem de banco, rede ou relógio real.
