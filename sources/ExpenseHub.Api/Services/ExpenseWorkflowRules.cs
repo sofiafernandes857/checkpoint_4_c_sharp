@@ -39,6 +39,24 @@ public static class ExpenseWorkflowRules
         return history;
     }
 
+    /// <summary>Prepares a payment and its audit entry for an approved expense.</summary>
+    /// <param name="expense">Target expense.</param>
+    /// <param name="actor">Authenticated finance principal.</param>
+    /// <param name="now">Server instant.</param>
+    /// <returns>Records to save with the changed expense.</returns>
+    public static (ExpenseHistory History, PaymentRecord Payment) Pay(Expense expense, ClaimsPrincipal actor, DateTimeOffset now)
+    {
+        string actorId = ExpenseAccessRules.RequirePayment(expense, actor);
+        ExpenseHistory history = Transition(expense, actorId, now, ExpenseStatus.Paid);
+        PaymentRecord payment = new()
+        {
+            ExpenseId = expense.Id,
+            ActorId = actorId,
+            PaidAtUtc = now.ToUniversalTime(),
+        };
+        return (history, payment);
+    }
+
     private static ExpenseHistory Transition(Expense expense, string actorId, DateTimeOffset now, ExpenseStatus next)
     {
         ExpenseStatus previous = expense.Status;
