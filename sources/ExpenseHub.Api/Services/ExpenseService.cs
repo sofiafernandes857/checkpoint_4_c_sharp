@@ -116,6 +116,41 @@ public sealed class ExpenseService
             .SingleOrDefaultAsync(expense => expense.Id == id, cancellationToken)
         ?? throw new ExpenseOperationException(404, "Expense not found.");
 
+    /// <summary>Approves a submitted request and saves its audit entry.</summary>
+    /// <param name="actor">Authenticated principal.</param>
+    /// <param name="id">Expense identifier.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>The approved expense.</returns>
+    public async Task<Expense> ApproveAsync(ClaimsPrincipal actor, Guid id, CancellationToken cancellationToken)
+    {
+        ExpenseAccessRules.RequireRole(actor, ApplicationRoles.Approver);
+        Expense expense = await FindForTransitionAsync(id, cancellationToken);
+        _database.ExpenseHistories.Add(ExpenseWorkflowRules.Approve(expense, actor, _clock.GetUtcNow()));
+        await SaveAsync(cancellationToken);
+        return expense;
+    }
+
+    /// <summary>Rejects a submitted request and saves its reason and audit entry.</summary>
+    /// <param name="actor">Authenticated principal.</param>
+    /// <param name="id">Expense identifier.</param>
+    /// <param name="request">Rejection reason.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>The rejected expense.</returns>
+    public async Task<Expense> RejectAsync(ClaimsPrincipal actor, Guid id, RejectExpenseRequest request,
+        CancellationToken cancellationToken)
+    {
+        ExpenseAccessRules.RequireRole(actor, ApplicationRoles.Approver);
+        ArgumentNullException.ThrowIfNull(request);
+        Expense expense = await FindForTransitionAsync(id, cancellationToken);
+        _database.ExpenseHistories.Add(ExpenseWorkflowRules.Reject(expense, actor, request.Justification, _clock.GetUtcNow()));
+        await SaveAsync(cancellationToken);
+        return expense;
+    }
+
+    private async Task<Expense> FindForTransitionAsync(Guid id, CancellationToken cancellationToken) =>
+        await _database.Expenses.SingleOrDefaultAsync(expense => expense.Id == id, cancellationToken)
+        ?? throw new ExpenseOperationException(404, "Expense not found.");
+
     private async Task ValidateCategoryAsync(Guid id, CancellationToken cancellationToken)
     {
         if (!await _database.ExpenseCategories.AnyAsync(category => category.Id == id, cancellationToken))

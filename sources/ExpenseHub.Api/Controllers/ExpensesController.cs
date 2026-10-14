@@ -98,6 +98,43 @@ public sealed class ExpensesController : ControllerBase
         }
     }
 
+    /// <summary>Approves a submitted expense owned by another user.</summary>
+    /// <param name="id">Expense identifier.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>The updated expense or a problem response.</returns>
+    [HttpPost("{id:guid}/approve")]
+    [Authorize(Roles = ApplicationRoles.Approver)]
+    public async Task<IActionResult> ApproveAsync(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _expenses.ApproveAsync(User, id, cancellationToken));
+        }
+        catch (ExpenseOperationException error)
+        {
+            return Problem(statusCode: error.StatusCode, title: error.Message);
+        }
+    }
+
+    /// <summary>Rejects a submitted expense owned by another user.</summary>
+    /// <param name="id">Expense identifier.</param>
+    /// <param name="request">Rejection justification.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>The updated expense or a problem response.</returns>
+    [HttpPost("{id:guid}/reject")]
+    [Authorize(Roles = ApplicationRoles.Approver)]
+    public async Task<IActionResult> RejectAsync(Guid id, RejectExpenseRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _expenses.RejectAsync(User, id, request, cancellationToken));
+        }
+        catch (ExpenseOperationException error)
+        {
+            return Problem(statusCode: error.StatusCode, title: error.Message);
+        }
+    }
+
     /// <summary>Lists only visible expenses.</summary>
     /// <param name="cancellationToken">Request cancellation.</param>
     /// <returns>The visible expenses or a problem response.</returns>
