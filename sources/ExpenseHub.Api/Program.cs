@@ -1,6 +1,8 @@
+using System;
 using System.Threading.Tasks;
 using ExpenseHub.Api.Persistence;
 using ExpenseHub.Api.Security;
+using ExpenseHub.Api.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -20,6 +22,8 @@ internal static class Program
         builder.Services.AddOpenApi();
         builder.Services.AddControllers();
         builder.Services.AddProblemDetails();
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddScoped<ExpenseService>();
         builder.Services.AddAuthentication(IdentityConstants.BearerScheme).AddBearerToken(IdentityConstants.BearerScheme);
         builder.Services.AddAuthorization();
         builder.Services.AddIdentityCore<IdentityUser>(options =>
@@ -45,6 +49,7 @@ internal static class Program
                 scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>(),
                 scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>(),
                 builder.Configuration);
+            await ExpenseCategorySeed.InitializeAsync(database);
             await transaction.CommitAsync();
         }
 

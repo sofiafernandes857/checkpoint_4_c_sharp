@@ -95,3 +95,5 @@ O projeto deve compilar sem erros e ser entregue sem warnings para receber a pon
 ## Implementação do grupo
 
 Consulte [Execução local](docs/EXECUCAO.md) para provider, configuração e comandos.
+
+Consulte [Despesas](docs/DESPESAS.md) para contratos de rascunho, categorias e histórico.
