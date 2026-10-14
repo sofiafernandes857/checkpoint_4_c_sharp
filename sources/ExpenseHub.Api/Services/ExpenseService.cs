@@ -35,7 +35,7 @@ public sealed class ExpenseService
     public async Task<Expense> CreateAsync(ClaimsPrincipal actor, ExpenseDraftRequest request,
         CancellationToken cancellationToken)
     {
-        string actorId = EmployeeId(actor);
+        string actorId = ExpenseAccessRules.RequireRole(actor, ApplicationRoles.Employee);
         DateTimeOffset now = _clock.GetUtcNow();
         ExpenseDraftRules.Validate(request, DateOnly.FromDateTime(now.UtcDateTime));
         await ValidateCategoryAsync(request.CategoryId!.Value, cancellationToken);
@@ -55,7 +55,7 @@ public sealed class ExpenseService
     public async Task<Expense> EditAsync(ClaimsPrincipal actor, Guid id, ExpenseDraftRequest request,
         CancellationToken cancellationToken)
     {
-        string actorId = EmployeeId(actor);
+        string actorId = ExpenseAccessRules.RequireRole(actor, ApplicationRoles.Employee);
         Expense expense = await _database.Expenses.SingleOrDefaultAsync(
             item => item.Id == id && item.OwnerId == actorId, cancellationToken)
             ?? throw new ExpenseOperationException(404, "Expense not found.");
@@ -80,28 +80,45 @@ public sealed class ExpenseService
     public async Task<IReadOnlyList<ExpenseCategory>> CategoriesAsync(ClaimsPrincipal actor,
         CancellationToken cancellationToken)
     {
-        EmployeeId(actor);
+        ExpenseAccessRules.RequireRole(actor, ApplicationRoles.Employee);
         return await _database.ExpenseCategories.AsNoTracking().OrderBy(category => category.Name)
             .ToListAsync(cancellationToken);
     }
 
-    private static string EmployeeId(ClaimsPrincipal actor)
+    /// <summary>Submits an owned draft with its audit entry in one save.</summary>
+    /// <param name="actor">Authenticated principal.</param>
+    /// <param name="id">Expense identifier.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>The submitted expense.</returns>
+    public async Task<Expense> SubmitAsync(ClaimsPrincipal actor, Guid id, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(actor);
-        string? id = actor.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (actor.Identity?.IsAuthenticated != true || string.IsNullOrWhiteSpace(id))
-        {
-            throw new ExpenseOperationException(401, "Authentication is required.");
-        }
-
-        if (!actor.IsInRole(ApplicationRoles.Employee))
-        {
-            throw new ExpenseOperationException(403, "The Employee role is required.");
-        }
-
-        return id;
+        string actorId = ExpenseAccessRules.RequireRole(actor, ApplicationRoles.Employee);
+        Expense expense = await _database.Expenses.SingleOrDefaultAsync(
+            item => item.Id == id && item.OwnerId == actorId, cancellationToken)
+            ?? throw new ExpenseOperationException(404, "Expense not found.");
+        _database.ExpenseHistories.Add(ExpenseWorkflowRules.Submit(expense, actor, _clock.GetUtcNow()));
+        await SaveAsync(cancellationToken);
+        return expense;
     }
+
+    /// <summary>Lists only records visible to the combined roles.</summary>
+    /// <param name="actor">Authenticated principal.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>Visible expenses ordered by expense date and identifier.</returns>
+    public async Task<IReadOnlyList<Expense>> ListAsync(ClaimsPrincipal actor, CancellationToken cancellationToken) =>
+        await _database.Expenses.AsNoTracking().Where(ExpenseAccessRules.Visibility(actor))
+            .OrderByDescending(expense => expense.ExpenseDate).ThenBy(expense => expense.Id)
+            .ToListAsync(cancellationToken);
+
+    /// <summary>Finds a visible expense without disclosing records outside the read scope.</summary>
+    /// <param name="actor">Authenticated principal.</param>
+    /// <param name="id">Expense identifier.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>The visible expense, or a 404 failure.</returns>
+    public async Task<Expense> DetailAsync(ClaimsPrincipal actor, Guid id, CancellationToken cancellationToken) =>
+        await _database.Expenses.AsNoTracking().Where(ExpenseAccessRules.Visibility(actor))
+            .SingleOrDefaultAsync(expense => expense.Id == id, cancellationToken)
+        ?? throw new ExpenseOperationException(404, "Expense not found.");
 
     private async Task ValidateCategoryAsync(Guid id, CancellationToken cancellationToken)
     {
