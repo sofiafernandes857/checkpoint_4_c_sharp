@@ -24,6 +24,7 @@ internal static class Program
         builder.Services.AddProblemDetails();
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddScoped<ExpenseService>();
+        builder.Services.AddScoped<IExpenseTransitionStore, ExpenseTransitionStore>();
         builder.Services.AddAuthentication(IdentityConstants.BearerScheme).AddBearerToken(IdentityConstants.BearerScheme);
         builder.Services.AddAuthorization();
         builder.Services.AddIdentityCore<IdentityUser>(options =>

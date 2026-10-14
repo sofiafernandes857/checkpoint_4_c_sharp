@@ -135,6 +135,42 @@ public sealed class ExpensesController : ControllerBase
         }
     }
 
+    /// <summary>Pays an approved expense owned by another user.</summary>
+    /// <param name="id">Expense identifier.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>The result or a problem response.</returns>
+    [HttpPost("{id:guid}/pay")]
+    [Authorize(Roles = ApplicationRoles.Finance)]
+    public async Task<IActionResult> PayAsync(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _expenses.PayAsync(User, id, cancellationToken));
+        }
+        catch (ExpenseOperationException error)
+        {
+            return Problem(statusCode: error.StatusCode, title: error.Message);
+        }
+    }
+
+    /// <summary>Reads the audit trail of a visible expense.</summary>
+    /// <param name="id">Expense identifier.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>The result or a problem response.</returns>
+    [HttpGet("{id:guid}/history")]
+    [Authorize(Roles = ExpenseAccessRules.ReaderRoles)]
+    public async Task<IActionResult> HistoryAsync(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _expenses.HistoryAsync(User, id, cancellationToken));
+        }
+        catch (ExpenseOperationException error)
+        {
+            return Problem(statusCode: error.StatusCode, title: error.Message);
+        }
+    }
+
     /// <summary>Lists only visible expenses.</summary>
     /// <param name="cancellationToken">Request cancellation.</param>
     /// <returns>The visible expenses or a problem response.</returns>

@@ -17,14 +17,17 @@ public sealed class ExpenseService
 {
     private readonly ExpenseHubDbContext _database;
     private readonly TimeProvider _clock;
+    private readonly IExpenseTransitionStore _transitions;
 
     /// <summary>Initializes the service with scoped persistence and an injectable clock.</summary>
     /// <param name="database">Scoped relational context.</param>
     /// <param name="clock">Server clock.</param>
-    public ExpenseService(ExpenseHubDbContext database, TimeProvider clock)
+    /// <param name="transitions">Atomic decision and payment persistence.</param>
+    public ExpenseService(ExpenseHubDbContext database, TimeProvider clock, IExpenseTransitionStore transitions)
     {
         _database = database;
         _clock = clock;
+        _transitions = transitions;
     }
 
     /// <summary>Creates a draft and its history atomically.</summary>
@@ -125,8 +128,9 @@ public sealed class ExpenseService
     {
         ExpenseAccessRules.RequireRole(actor, ApplicationRoles.Approver);
         Expense expense = await FindForTransitionAsync(id, cancellationToken);
-        _database.ExpenseHistories.Add(ExpenseWorkflowRules.Approve(expense, actor, _clock.GetUtcNow()));
-        await SaveAsync(cancellationToken);
+        Guid version = expense.Version;
+        ExpenseHistory history = ExpenseWorkflowRules.Approve(expense, actor, _clock.GetUtcNow());
+        await _transitions.CommitAsync(expense, version, history, null, cancellationToken);
         return expense;
     }
 
@@ -142,13 +146,39 @@ public sealed class ExpenseService
         ExpenseAccessRules.RequireRole(actor, ApplicationRoles.Approver);
         ArgumentNullException.ThrowIfNull(request);
         Expense expense = await FindForTransitionAsync(id, cancellationToken);
-        _database.ExpenseHistories.Add(ExpenseWorkflowRules.Reject(expense, actor, request.Justification, _clock.GetUtcNow()));
-        await SaveAsync(cancellationToken);
+        Guid version = expense.Version;
+        ExpenseHistory history = ExpenseWorkflowRules.Reject(expense, actor, request.Justification, _clock.GetUtcNow());
+        await _transitions.CommitAsync(expense, version, history, null, cancellationToken);
         return expense;
     }
 
+    /// <summary>Pays an approved request and commits payment, state and audit atomically.</summary>
+    /// <param name="actor">Authenticated principal.</param>
+    /// <param name="id">Expense identifier.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>The paid expense.</returns>
+    public async Task<Expense> PayAsync(ClaimsPrincipal actor, Guid id, CancellationToken cancellationToken)
+    {
+        ExpenseAccessRules.RequireRole(actor, ApplicationRoles.Finance);
+        Expense expense = await FindForTransitionAsync(id, cancellationToken);
+        Guid version = expense.Version;
+        (ExpenseHistory history, PaymentRecord payment) = ExpenseWorkflowRules.Pay(expense, actor, _clock.GetUtcNow());
+        await _transitions.CommitAsync(expense, version, history, payment, cancellationToken);
+        return expense;
+    }
+
+    /// <summary>Reads audit entries using the same visibility rule as list and detail.</summary>
+    /// <param name="actor">Authenticated principal.</param>
+    /// <param name="id">Expense identifier.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>Chronologically ordered visible audit entries.</returns>
+    public async Task<IReadOnlyList<ExpenseHistory>> HistoryAsync(ClaimsPrincipal actor, Guid id,
+        CancellationToken cancellationToken) =>
+        await _transitions.HistoryAsync(id, ExpenseAccessRules.Visibility(actor), cancellationToken)
+        ?? throw new ExpenseOperationException(404, "Expense not found.");
+
     private async Task<Expense> FindForTransitionAsync(Guid id, CancellationToken cancellationToken) =>
-        await _database.Expenses.SingleOrDefaultAsync(expense => expense.Id == id, cancellationToken)
+        await _transitions.FindAsync(id, cancellationToken)
         ?? throw new ExpenseOperationException(404, "Expense not found.");
 
     private async Task ValidateCategoryAsync(Guid id, CancellationToken cancellationToken)
