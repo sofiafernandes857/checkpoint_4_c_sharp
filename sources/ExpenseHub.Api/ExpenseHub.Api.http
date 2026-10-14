@@ -5,5 +5,53 @@ Accept: application/json
 
 ###
 
-# Os endpoints do checkpoint estão definidos em docs/REQUISITOS.md.
-# Implemente e adicione aqui as requisições usadas para validar cada issue.
+# Obtenha accessToken via POST /login e configure somente no ambiente local do cliente HTTP.
+# Não salve tokens reais neste arquivo. Defina expenseId a partir da criação.
+@accessToken = <TOKEN_LOCAL_NAO_VERSIONAR>
+@expenseId = <ID_DA_DESPESA_CRIADA>
+
+GET {{ExpenseHub_Api_HostAddress}}/api/expense-categories
+Authorization: Bearer {{accessToken}}
+
+###
+
+POST {{ExpenseHub_Api_HostAddress}}/api/expenses
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "description": "Almoço de trabalho",
+  "amount": 25.50,
+  "expenseDate": "2026-10-14",
+  "categoryId": "10000000-0000-0000-0000-000000000001"
+}
+
+###
+
+PUT {{ExpenseHub_Api_HostAddress}}/api/expenses/{{expenseId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "description": "Almoço de trabalho atualizado",
+  "amount": 30.00,
+  "expenseDate": "2026-10-14",
+  "categoryId": "10000000-0000-0000-0000-000000000001"
+}
+
+###
+
+POST {{ExpenseHub_Api_HostAddress}}/api/expenses/{{expenseId}}/submit
+Authorization: Bearer {{accessToken}}
+
+###
+
+GET {{ExpenseHub_Api_HostAddress}}/api/expenses
+Authorization: Bearer {{accessToken}}
+
+###
+
+GET {{ExpenseHub_Api_HostAddress}}/api/expenses/{{expenseId}}
+Authorization: Bearer {{accessToken}}
+
+###

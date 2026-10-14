@@ -60,11 +60,7 @@ public sealed class ExpenseService
             item => item.Id == id && item.OwnerId == actorId, cancellationToken)
             ?? throw new ExpenseOperationException(404, "Expense not found.");
 
-        if (expense.Status != ExpenseStatus.Draft)
-        {
-            throw new ExpenseOperationException(409, "Only drafts can be edited.");
-        }
-
+        ExpenseAccessRules.RequireOwnedDraft(expense, actorId);
         DateTimeOffset now = _clock.GetUtcNow();
         ExpenseDraftRules.Validate(request, DateOnly.FromDateTime(now.UtcDateTime));
         await ValidateCategoryAsync(request.CategoryId!.Value, cancellationToken);

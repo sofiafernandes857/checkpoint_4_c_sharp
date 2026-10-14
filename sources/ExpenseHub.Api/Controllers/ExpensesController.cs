@@ -102,8 +102,7 @@ public sealed class ExpensesController : ControllerBase
     /// <param name="cancellationToken">Request cancellation.</param>
     /// <returns>The visible expenses or a problem response.</returns>
     [HttpGet]
-    [Authorize(Roles = ApplicationRoles.Employee + "," + ApplicationRoles.Approver + "," +
-        ApplicationRoles.Finance + "," + ApplicationRoles.Auditor)]
+    [Authorize(Roles = ExpenseAccessRules.ReaderRoles)]
     public async Task<IActionResult> ListAsync(CancellationToken cancellationToken)
     {
         try
@@ -121,8 +120,7 @@ public sealed class ExpensesController : ControllerBase
     /// <param name="cancellationToken">Request cancellation.</param>
     /// <returns>The expense or a problem response.</returns>
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = ApplicationRoles.Employee + "," + ApplicationRoles.Approver + "," +
-        ApplicationRoles.Finance + "," + ApplicationRoles.Auditor)]
+    [Authorize(Roles = ExpenseAccessRules.ReaderRoles)]
     public async Task<IActionResult> DetailAsync(Guid id, CancellationToken cancellationToken)
     {
         try

@@ -1,4 +1,4 @@
-# Despesas — I04 e I05
+# Despesas — I04, I05 e I06
 
 ## Contratos
 
@@ -90,6 +90,31 @@ ID, operações traduzidas pelo SQLite. Não há paginação nesta etapa.
 O filtro é reutilizável na futura consulta de histórico. Consulta não autoriza
 decisões ou pagamento: o colega da I07/I08 deve aplicar também os bloqueios de
 ownership e estado.
+
+## Integração da autorização — I06
+
+ExpenseAccessRules concentra a matriz contextual:
+
+- ActorId/RequireRole exigem identidade autenticada e identificador válido.
+- RequireOwnedDraft valida ownership antes do estado; falha de ownership retorna
+  404 e estado incompatível retorna 409. Edição e envio usam a mesma regra.
+- Visibility é o filtro compartilhado de listagem/detalhe. O endpoint de histórico
+  da I08 deve localizar a despesa com esse filtro antes de carregar o histórico.
+- RequireDecision exige Approver, ator diferente do proprietário e Submitted.
+  Deve ser chamada antes de aprovação e reprovação na I07.
+- RequirePayment exige Finance, ator diferente do proprietário e Approved.
+  Deve ser chamada antes do pagamento na I08.
+
+As duas últimas regras retornam o ID autenticado e não alteram a despesa. Sem
+autenticação/ID válido retornam 401, sem role ou em despesa própria retornam 403
+e estado incompatível retorna 409. A proibição de ação própria é preservada com
+qualquer combinação de roles. Os futuros endpoints ainda precisam localizar o
+recurso, validar os dados da ação, gerar histórico e persistir atomicamente.
+
+Os testes unitários verificam as 32 combinações das cinco roles contra todos os
+estados e proprietários, além de bloqueios de ação própria, estado e autenticação.
+As rotas de aprovação, reprovação, pagamento e histórico não foram implementadas
+nesta parte; pertencem ao outro integrante.
 
 ## Validação
 
