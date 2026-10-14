@@ -1,4 +1,4 @@
-# Despesas — I04
+# Despesas — I04 e I05
 
 ## Contratos
 
@@ -62,9 +62,34 @@ rastreamento das alterações que não foram persistidas. O token é usado para
 concorrência entre operações no servidor; esta versão não implementa If-Match
 para detectar formulários antigos enviados posteriormente por clientes.
 
-O endpoint de detalhe indicado em Location será implementado na I05. As operações
-de envio, aprovação, pagamento e consulta de histórico devem integrar o serviço
-existente nas próximas issues. Nenhuma alteração de esquema foi necessária na I04.
+O endpoint de detalhe indicado em Location está disponível na I05. As operações
+de aprovação, pagamento e consulta de histórico devem integrar o serviço existente
+nas próximas issues. Nenhuma alteração de esquema foi necessária na I04/I05.
+
+## Envio e consultas — I05
+
+`POST /api/expenses/{id}/submit` exige Employee e Draft próprio. Retorna 200 com
+a despesa em Submitted, renova Version e registra histórico `Submitted` no mesmo
+SaveChangesAsync. Repetições retornam 409 sem histórico extra. Despesa de outro
+usuário ou inexistente retorna 404. O endpoint não recebe campos de transição:
+ator, estado e instante são sempre derivados do servidor.
+
+`GET /api/expenses` e `GET /api/expenses/{id}` exigem uma role funcional:
+
+- Employee: despesas próprias, em qualquer estado.
+- Approver: Submitted.
+- Finance: Approved/Paid.
+- Auditor: todas as despesas.
+- Admin sozinho e usuário sem roles: 403.
+
+Roles acumuladas dão a união da leitura. ExpenseAccessRules.Visibility retorna
+uma expressão aplicada no IQueryable antes da materialização. Detalhes invisíveis
+e inexistentes retornam 404. A listagem ordena por data da despesa decrescente e
+ID, operações traduzidas pelo SQLite. Não há paginação nesta etapa.
+
+O filtro é reutilizável na futura consulta de histórico. Consulta não autoriza
+decisões ou pagamento: o colega da I07/I08 deve aplicar também os bloqueios de
+ownership e estado.
 
 ## Validação
 
