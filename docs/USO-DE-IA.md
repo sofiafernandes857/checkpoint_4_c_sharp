@@ -46,3 +46,15 @@ Decisões: SQLite relacional, Identity bearer nativo (token opaco), senha Admin
 via configuração segura, cadastro sem roles e troca de roles transacional.
 Limites e evidências estão em VALIDACAO-PARTE-SOFI.md; responsabilidades dos
 colegas estão em DIVISAO-GRUPO.md.
+
+## Parte I04–I06
+
+Rascunhos, envio, consultas e regras contextuais foram implementados com auxílio
+do Codex. Foram adicionados testes unitários de validação, histórico, transição e
+combinações de roles. As verificações HTTP suplementares usaram banco temporário
+e credenciais aleatórias não versionadas.
+
+Os commits locais utilizam a identidade Git já configurada na máquina. O integrante
+deve revisar os diffs, executar a validação, compreender os testes e explicar as
+decisões antes de integrar as PRs. O push foi recusado por autenticação GitHub;
+nenhuma PR ou merge externo foi realizado durante esta implementação.

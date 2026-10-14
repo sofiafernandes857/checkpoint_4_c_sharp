@@ -18,16 +18,7 @@ public static class ExpenseWorkflowRules
         ArgumentNullException.ThrowIfNull(expense);
         string actorId = ExpenseAccessRules.RequireRole(actor, ApplicationRoles.Employee);
 
-        if (!string.Equals(expense.OwnerId, actorId, StringComparison.Ordinal))
-        {
-            throw new ExpenseOperationException(404, "Expense not found.");
-        }
-
-        if (expense.Status != ExpenseStatus.Draft)
-        {
-            throw new ExpenseOperationException(409, "Only drafts can be submitted.");
-        }
-
+        ExpenseAccessRules.RequireOwnedDraft(expense, actorId);
         expense.Status = ExpenseStatus.Submitted;
         expense.UpdatedAtUtc = now.ToUniversalTime();
         expense.Version = Guid.NewGuid();

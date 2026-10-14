@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using ExpenseHub.Api.Contracts;
 using ExpenseHub.Api.Domain;
+using ExpenseHub.Api.Security;
 
 namespace ExpenseHub.Api.Services;
 
@@ -68,18 +69,7 @@ public static class ExpenseDraftRules
     /// <returns>The audit entry associated with this mutation.</returns>
     public static ExpenseHistory Edit(Expense expense, ExpenseDraftRequest request, string actorId, DateTimeOffset now)
     {
-        ArgumentNullException.ThrowIfNull(expense);
-
-        if (!string.Equals(expense.OwnerId, actorId, StringComparison.Ordinal))
-        {
-            throw new ExpenseOperationException(404, "Expense not found.");
-        }
-
-        if (expense.Status != ExpenseStatus.Draft)
-        {
-            throw new ExpenseOperationException(409, "Only drafts can be edited.");
-        }
-
+        ExpenseAccessRules.RequireOwnedDraft(expense, actorId);
         Validate(request, DateOnly.FromDateTime(now.UtcDateTime));
         Dictionary<string, object> changes = new();
         AddChange(changes, nameof(Expense.Description), expense.Description, request.Description.Trim());

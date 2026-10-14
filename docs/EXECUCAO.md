@@ -1,5 +1,10 @@
 # Executar a parte I01–I03
 
+As partes I04–I06 foram implementadas em branches locais sequenciais. Consulte
+[Despesas](DESPESAS.md) para as novas rotas de rascunho, envio, consultas e
+categorias. Os comandos de configuração e inicialização abaixo continuam válidos;
+as indicações de escopo I01–I03 descrevem a entrega inicial.
+
 Requer SDK .NET 10. O template usa `net10.0` e pacotes 10.0.12.
 
 ```powershell

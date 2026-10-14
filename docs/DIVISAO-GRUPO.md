@@ -5,7 +5,7 @@
 | Integrante | Issues | Commits funcionais planejados | Situação |
 |---|---|---|---|
 | Sofi | I01, I02, I03 | 3 | Implementação inicial pronta para revisão e commits locais |
-| Colega 1 | I04, I05, I06 | 3 | A implementar |
+| Colega 1 | I04, I05, I06 | 3 | Implementadas localmente; publicação e CI pendentes por autenticação GitHub |
 | Colega 2 | I07, I08, I09 | 3 | A implementar |
 | Todos | I10 | Revisão transversal e correções reais quando necessárias | Pipeline final pendente |
 
