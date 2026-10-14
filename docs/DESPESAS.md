@@ -1,4 +1,30 @@
-# Despesas — I04, I05 e I06
+# Despesas — I04 a I09
+
+## Aprovação, reprovação, pagamento e histórico — I07/I08
+
+As operações abaixo já estão integradas ao ExpenseService e às regras da I06:
+
+| Rota | Perfil e regra | Corpo |
+|---|---|---|
+| POST /api/expenses/{id}/approve | Approver, não proprietário, Submitted → Approved | Sem corpo |
+| POST /api/expenses/{id}/reject | Approver, não proprietário, Submitted → Rejected | `{"justification":"Despesa fora da política"}` |
+| POST /api/expenses/{id}/pay | Finance, não proprietário, Approved → Paid | Sem corpo |
+| GET /api/expenses/{id}/history | Mesma visibilidade de lista/detalhe | Sem corpo |
+
+Justificativa de reprovação: 10–500 caracteres após Trim. Aprovação não exige
+justificativa, conforme a issue oficial I07. Ator, IDs, versão, estados e instantes
+UTC são definidos pelo servidor. Decisões e pagamento retornam 200 com a despesa.
+Repetição/estado incompatível/conflito concorrente retornam 409, sem histórico extra.
+O histórico invisível retorna 404; Admin sozinho recebe 403.
+
+O adaptador ExpenseTransitionStore grava a despesa, o histórico e, quando houver,
+PaymentRecord em um único SaveChanges transacional. Sua interface permite testes
+unitários de falha sem banco. O filtro de histórico usa ExpenseAccessRules.Visibility
+no SQL. Os estados Rejected/Paid permanecem finais.
+
+Evidências: [I07](VALIDACAO-I07.md), [I08](VALIDACAO-I08.md) e [I09](VALIDACAO-I09.md).
+As seções abaixo registram a implementação original de I04–I06; as referências
+a funcionalidades futuras nessas seções foram atendidas pela integração acima.
 
 ## Contratos
 

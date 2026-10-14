@@ -1,5 +1,17 @@
 # Uso de Inteligência Artificial
 
+## Parte I07–I09
+
+Aprovação, reprovação, pagamento, histórico e testes foram implementados com
+auxílio do Codex. Os commits usam a identidade Git local de Caio, conforme sua
+solicitação, sem atribuir autoria ou coautoria à ferramenta. Isso não substitui
+a revisão e a compreensão do código pelo integrante.
+
+Foram executados testes unitários e duas verificações de mutação temporária.
+Evidências e limites estão em VALIDACAO-I07.md, VALIDACAO-I08.md e VALIDACAO-I09.md.
+O integrante deve conhecer as regras de ownership, estados, atomicidade e
+concorrência para explicar sua entrega.
+
 O uso de Inteligência Artificial (IA) é permitido. O objetivo não é evitar ferramentas, mas demonstrar engenharia, validação e autoria.
 
 ## Regras
